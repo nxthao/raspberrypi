@@ -61,10 +61,10 @@ class Producer(threading.Thread):
                                 while i <= 5:  
                                     self.data.insert(0, ord(c[i]))
                                     i += 1 
-                                print("ok \n")
+                                print(" data send ok \n")
                                 break
                             else:
-                                print("don't ok \n")
+                                print(" data send don't ok \n")
                                 # sau do no se quay lai nhan data tu uart
 
                             #i = 0
@@ -145,10 +145,10 @@ class Producer(threading.Thread):
                                 print('condition released by {}'.format(self.name))
                                 self.condition.release()
 
-                                print("ok \n")
+                                print(" data 2 send ok \n")
                                 break;
                             else:
-                                print("don't ok \n")      
+                                print(" data  2 send don't ok \n")      
                     m += 1
 
             # de bat khi khong nhan duoc du lieu
@@ -174,12 +174,15 @@ class Consumer1(threading.Thread):
         while True:
             self.condition.acquire()
             print('condition acquired by {}'.format(self.name))
+            data_t = []
             while True:
                 if self.data:
                     # tao vong lap nhan gia tri
                     i = 0
+                    print('{} popped from list by {}'.format(self.data, self.name))
                     while i <= 5:
-                        data_t = self.data.pop()
+                        t = self.data.pop()
+                        data_t.append(hex(t))
                         i += 1
 
                     print('{} popped from list by {}'.format(data_t, self.name))
@@ -196,6 +199,14 @@ class Consumer1(threading.Thread):
 
             print('condition released by {}'.format(self.name))
             self.condition.release()
+
+            # kiem tra xem phai tiva gui khong
+            if data_t[1] == '0x10':
+                # kiem tra xem nhiet do hay do am 
+                if data_t[2] == '0x24':
+                    print("xu ly data nhiet do")
+                elif data_t[2] == '0x25':
+                    print("xu ly data do am") 
 
 
 class Consumer2(threading.Thread):
@@ -214,12 +225,14 @@ class Consumer2(threading.Thread):
         while True:
             self.condition.acquire()
             print('condition acquired by {}'.format(self.name))
+            data_t = []
             while True:
                 if self.data:
                     # tao vong lap nhan gia tri
                     i = 0
                     while i <= 5:
-                        data_t = self.data.pop()
+                        t = self.data.pop()
+                        data_t.append(hex(t)) 
                         i += 1
 
                     print('{} popped from list by {}'.format(data_t, self.name))
