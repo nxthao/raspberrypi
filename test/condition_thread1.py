@@ -3,6 +3,9 @@ import threading
 import time
 import serial
 from PyCRC.CRC16 import CRC16
+from influxdb import InfluxDBClient
+
+# cai dat uart  
 
 ser = serial.Serial(
         port = '/dev/ttyS0',
@@ -12,6 +15,15 @@ ser = serial.Serial(
         bytesize = serial.EIGHTBITS,
         timeout = 1
 )
+
+# cai dat infuxdb
+
+host = "192.168.43.180"
+port = "8086"
+
+dbname = "demo"  #tao database
+
+client = InfluxDBClient(host=host, port=port, database=dbname) # tao object InfluxDB 
 
 
 class Producer(threading.Thread):
@@ -251,6 +263,24 @@ class Consumer2(threading.Thread):
 
                     print('{} popped from list by {}'.format(data_t, self.name))
                     print('dua data len web')
+
+                    # dua data vao infuxdb
+                    tem = ord(data_t[1])
+                   
+                    temp = float(ord(data_t[1]))
+                    print("gia tri: {}".format(tem))
+                    json_body = [
+                        {
+                            "measurement": "sensor1",
+                            "fields": {
+                                "value": temp,
+                            }
+                        }
+                    ]
+                    
+                    client.write_points(json_body) # viet data tu json den InfluxDB
+                    time.sleep(1)
+
 
                     #counter = self.counter.pop()
                     #counter -= 1
