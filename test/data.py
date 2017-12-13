@@ -4,9 +4,10 @@ import time
 import serial
 from PyCRC.CRC16 import CRC16
 from influxdb import InfluxDBClient
+from twilio.rest import Client
+
 
 # cai dat thong so uart
-
 ser = serial.Serial(
         port = '/dev/ttyS0',
         baudrate = 115200,
@@ -16,15 +17,18 @@ ser = serial.Serial(
         timeout = 1
 )
 
-# cai dat thong so infuxdb
 
+# cai dat thong so infuxdb
 host = "192.168.1.8"
 port = "8086"
-
 dbname = "demo"  #tao database
-
 client = InfluxDBClient(host=host, port=port, database=dbname) # tao object InfluxDB 
 
+
+# cai dat thong so twilio
+account_sid = ""
+auth_token = ""
+client_sms = Client(account_sid, auth_token)
 
 class Producer(threading.Thread):
     """
@@ -212,27 +216,46 @@ class Consumer1(threading.Thread):
                 # kiem tra xem nhiet do hay do am 
                 if data_t[2] == '\x24':
                     print("xu ly data nhiet do")
+                    temp = float(ord(data_t[3]))
+
+                    # dua data nhiet do vao infuxdb
+                    print("gia tri: {}".format(temp))
+                    json_body = [
+                        {
+                            "measurement": "sensor",
+                            "fields": {
+                                "value": temp,
+                            }
+                        }
+                    ]
+                    
+                    client.write_points(json_body) # viet data tu json den InfluxDB
+
+                    # neu nhiet do qua lon se gui sms ve phone
+                    if ord(data_t[3]) >= 88:
+                        client_sms.messages.create(
+                            to="+841655240171",
+                            from_="+13342125125",
+                            body="HELLO THAO NGUYEN"
+                        )
+                         
+
                 elif data_t[2] == '\x25':
                     print("xu ly data do am") 
+                    humidity = float(ord(data_t[3]))
 
-            print('dua data len web')
-
-
-           # dua data vao infuxdb
-
-            temp = float(ord(data_t[3]))
-            print("gia tri: {}".format(temp))
-            json_body = [
-                {
-                    "measurement": "sensor1",
-                    "fields": {
-                        "value": temp,
-                    }
-                }
-            ]
+                    # dua data do am vao infuxdb
+                    print("gia tri: {}".format(humidity))
+                    json_body = [
+                        {
+                            "measurement": "sensor1",
+                            "fields": {
+                                "value": humidity,
+                            }
+                        }
+                    ]
                     
-            client.write_points(json_body) # viet data tu json den InfluxDB
-            time.sleep(1)
+                    client.write_points(json_body) # viet data tu json den InfluxDB
           
 
 if __name__ == '__main__':
