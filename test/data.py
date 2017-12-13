@@ -18,7 +18,7 @@ ser = serial.Serial(
 
 # cai dat thong so infuxdb
 
-host = "192.168.43.180"
+host = "192.168.1.8"
 port = "8086"
 
 dbname = "demo"  #tao database
@@ -168,10 +168,9 @@ class Consumer1(threading.Thread):
     """
     it will receive data from producer
     """
-    def __init__(self, data, data2, condition, counter):
+    def __init__(self, data, condition, counter):
         threading.Thread.__init__(self)
         self.data = data
-        self.data2 = data2
         self.condition = condition
         self.counter = counter
     def run(self):
@@ -213,87 +212,32 @@ class Consumer1(threading.Thread):
                 # kiem tra xem nhiet do hay do am 
                 if data_t[2] == '\x24':
                     print("xu ly data nhiet do")
-                    i = 0
-                    while i <= 1:
-                        self.data2.insert(0, data_t[i+2])
-                        i += 1
-                    # print('{} append from list by {}'.format(self.data2, self.name))
-                    print " ".join(hex(ord(n)) for n in self.data2)
                 elif data_t[2] == '\x25':
                     print("xu ly data do am") 
-                    i = 0
-                    while i <= 1:
-                        self.data2.insert(0, data_t[i+2])
-                        i += 1
-                    # print('{} append from list by {}'.format(self.data2, self.name))
-                    print " ".join(hex(ord(n)) for n in self.data2)
 
-            self.condition.acquire()    
-            self.condition.notify()
-            self.condition.release()
+            print('dua data len web')
+
+
+           # dua data vao infuxdb
+
+            temp = float(ord(data_t[3]))
+            print("gia tri: {}".format(temp))
+            json_body = [
+                {
+                    "measurement": "sensor1",
+                    "fields": {
+                        "value": temp,
+                    }
+                }
+            ]
+                    
+            client.write_points(json_body) # viet data tu json den InfluxDB
+            time.sleep(1)
           
-
-class Consumer2(threading.Thread):
-    """
-    it will receive data from consumer1
-    """
-    def __init__(self, data2, condition, counter):
-        threading.Thread.__init__(self)
-        self.data2 = data2
-        self.condition = condition
-        self.counter = counter
-    def run(self):
-        """
-        Consumes data from shared list
-        """
-        while True:
-            self.condition.acquire()
-            print('condition acquired by {}'.format(self.name))
-            data_t = []
-            while True:
-                if self.data2:
-                    # tao vong lap nhan gia tri
-                    i = 0
-                    while i <= 1:
-                        t = self.data2.pop()
-                        data_t.append(t) 
-                        i += 1
-
-                    #print('{} popped from list by {}'.format(data_t, self.name))
-                    print " ".join(hex(ord(n)) for n in data_t)
-                    print('dua data len web')
-
-
-                   # dua data vao infuxdb
-
-                    temp = float(ord(data_t[1]))
-                    print("gia tri: {}".format(temp))
-                    json_body = [
-                        {
-                            "measurement": "sensor1",
-                            "fields": {
-                                "value": temp,
-                            }
-                        }
-                    ]
-                    
-                    client.write_points(json_body) # viet data tu json den InfluxDB
-                    time.sleep(1)
-                    #counter = self.counter.pop()
-                    #counter -= 1
-                    #self.counter.append(counter)
-                    #print('tin hieu chua xu ly {}'.format(counter))
-                    
-                    break #thoat khoi vong lap
-                print('conditon wait by {}'.format(self.name))
-                self.condition.wait()
-            print('condition released by {}'.format(self.name))
-            self.condition.release()
 
 if __name__ == '__main__':
     # khoi tao mang intergers de thread1 tao yeu cau
     data = []
-    data2 = []
 
     # so nguyen luu tru so lan tin hieu chua xu ly kip
     counter = [0]
@@ -301,11 +245,8 @@ if __name__ == '__main__':
     # day la tao 1 threading.condition moi de cac thread khac cho thong bao cua cac thread khac. co the tim hieu them qua key:"threading.Condition() in python"
     condition = threading.Condition()
     producer = Producer(data, condition, counter)
-    consumer1 = Consumer1(data, data2, condition, counter)
-    consumer2 = Consumer2(data2, condition, counter)
+    consumer1 = Consumer1(data, condition, counter)
     producer.start()
     consumer1.start()
-    consumer2.start()
     producer.join()
     consumer1.join()
-    consumer2.join()
