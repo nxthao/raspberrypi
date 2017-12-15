@@ -59,14 +59,14 @@ class Producer(threading.Thread):
                         (chi cach nay in duoc gtri hexa cua string)
                         """
                         #gia tri c chinh la gia tri toan bo data minh nhan dc
-                        c = a + b[0] + b[1] + b[2] + b[3] + b[4]
+                        c = a + b[0] + b[1] + b[2] + b[3] + b[4] + b[5]
                         print " ".join(hex(ord(n)) for n in a)
                         print " ".join(hex(ord(n)) for n in b)
                         print " ".join(hex(ord(n)) for n in c)
                         data_t = [] 
 
                         # kiem tra xem nhan du data khong 
-                        if ord(b[4]) > 0:
+                        if ord(b[5]):
                             """ kiem tra xem nhan dung data 
                             gui tu tiva khong
                             """ 
@@ -74,7 +74,7 @@ class Producer(threading.Thread):
                             test_crc = (CRC16().calculate(data_crc))
                             if test_crc == 0:
                                 i = 0
-                                while i <= 5:  
+                                while i <= 6:  
                                     self.data.insert(0, c[i])
                                     i += 1 
                                 print(" data send ok \n")
@@ -83,13 +83,6 @@ class Producer(threading.Thread):
                                 print(" data send don't ok \n")
                                 # sau do no se quay lai nhan data tu uart
 
-                            #i = 0
-                            #while i <= 5:  
-                            #    #data_t.insert(0, ord(c[i]))
-                            #    self.data.insert(0, ord(c[i]))
-                            #    i += 1 
- 
-                        #break # thoat khoi vong lap nhan gia tri
             # de bat khi khong nhan duoc du lieu
             # (thong qua bat loi khong co chi so trong mang)
 
@@ -119,16 +112,16 @@ class Producer(threading.Thread):
             time.sleep(1)
 
             # kiem tra xem co data gui lien tiep nhau ko
-            m = 5
+            m = 6
             try:
                 while m < 20:
                     """ data gui tu uart se duoc luu tat ca trong b
                         vi vay se kiem tra trong b
                     """
                     if b[m] == '\xff':
-                        if ord(b[m + 5]) > 0:
+                        if ord(b[m + 6]):
                             # kiem tra xem nhan dung data gui tu tiva
-                            data_crc2 = b[m] + b[m+1] + b[m+2] + b[m+3] + b[m+4] + b[m+5]
+                            data_crc2 = b[m] + b[m+1] + b[m+2] + b[m+3] + b[m+4] + b[m+5] + b[m+6]
                             test_crc2 = (CRC16().calculate(data_crc2))
                             if test_crc2 == 0:
                             
@@ -137,7 +130,7 @@ class Producer(threading.Thread):
 
                                 # tao vong lap de nhan gia tri
                                 n = 0
-                                while n <= 5:
+                                while n <= 6:
                                     self.data.insert(0, b[m + n])
                                     n += 1      
                                 #print('{} appended to list by {}'.format(self.data, self.name))
@@ -189,7 +182,7 @@ class Consumer1(threading.Thread):
                 if self.data:
                     # tao vong lap nhan gia tri
                     i = 0
-                    while i <= 5:
+                    while i <= 6:
                         t = self.data.pop()
                         data_t.append(t)
                         i += 1
@@ -216,7 +209,7 @@ class Consumer1(threading.Thread):
                 # kiem tra xem nhiet do hay do am 
                 if data_t[2] == '\x24':
                     print("xu ly data nhiet do")
-                    temp = float(ord(data_t[3]))
+                    temp = float(ord(data_t[4]))
 
                     # dua data nhiet do vao infuxdb
                     print("gia tri: {}".format(temp))
@@ -232,7 +225,7 @@ class Consumer1(threading.Thread):
                     client.write_points(json_body) # viet data tu json den InfluxDB
 
                     # neu nhiet do qua lon se gui sms ve phone
-                    if ord(data_t[3]) >= 88:
+                    if ord(data_t[4]) >= 88:
                         client_sms.messages.create(
                             to="+841655240171",
                             from_="+13342125125",
@@ -242,7 +235,7 @@ class Consumer1(threading.Thread):
 
                 elif data_t[2] == '\x25':
                     print("xu ly data do am") 
-                    humidity = float(ord(data_t[3]))
+                    humidity = float(ord(data_t[4]))
 
                     # dua data do am vao infuxdb
                     print("gia tri: {}".format(humidity))
