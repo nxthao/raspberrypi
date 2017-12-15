@@ -26,8 +26,8 @@ client = InfluxDBClient(host=host, port=port, database=dbname) # tao object Infl
 
 
 # cai dat thong so twilio
-account_sid = ""
-auth_token = ""
+account_sid = " "
+auth_token = " "
 client_sms = Client(account_sid, auth_token)
 
 class Producer(threading.Thread):
