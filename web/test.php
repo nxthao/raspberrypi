@@ -1,6 +1,7 @@
 <?php
     if (isset($_POST['button']))
     {
+        system("gpio mode 7 out");
         system("gpio write 7 1");
     }
     else if (isset($_POST['btn']))
