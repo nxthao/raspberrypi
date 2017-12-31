@@ -19,15 +19,15 @@ ser = serial.Serial(
 
 
 # cai dat thong so infuxdb
-host = "192.168.1.8"
+host = "192.168.1.3"
 port = "8086"
 dbname = "demo"  #tao database
 client = InfluxDBClient(host=host, port=port, database=dbname) # tao object InfluxDB 
 
 
 # cai dat thong so twilio
-account_sid = " "
-auth_token = " "
+account_sid = ""
+auth_token = ""
 client_sms = Client(account_sid, auth_token)
 
 class Producer(threading.Thread):
@@ -45,9 +45,14 @@ class Producer(threading.Thread):
         Append random data to data list at random time.
         """
        
+        # set time
+
         while True:
+            print(time.clock())
+            t = time.clock() 
             try:
                 while True:
+                    #print(time.clock())
                     a = ser.read()
                     if a == '\xff':
                         #wait to receive data from uart
@@ -82,6 +87,14 @@ class Producer(threading.Thread):
                             else:
                                 print(" data send don't ok \n")
                                 # sau do no se quay lai nhan data tu uart
+                          
+                    #print(time.clock())
+                    time.sleep(1)
+                    if (time.clock() - t) >= 20:
+                        ser.write('\x10'+'\x26'+'\xFF'+'\x5B'+'\xE5')
+                        #print("resend data")
+
+  
 
             # de bat khi khong nhan duoc du lieu
             # (thong qua bat loi khong co chi so trong mang)
@@ -209,15 +222,15 @@ class Consumer1(threading.Thread):
                 # kiem tra xem nhiet do hay do am 
                 if data_t[2] == '\x24':
                     print("xu ly data nhiet do")
-                    temp = float(ord(data_t[4]))
+                    temp1 = float(ord(data_t[4]))
 
                     # dua data nhiet do vao infuxdb
-                    print("gia tri: {}".format(temp))
+                    print("gia tri: {}".format(temp1))
                     json_body = [
                         {
-                            "measurement": "sensor",
+                            "measurement": "temperature_1",
                             "fields": {
-                                "value": temp,
+                                "value": temp1,
                             }
                         }
                     ]
@@ -225,31 +238,94 @@ class Consumer1(threading.Thread):
                     client.write_points(json_body) # viet data tu json den InfluxDB
 
                     # neu nhiet do qua lon se gui sms ve phone
-                    if ord(data_t[4]) >= 88:
+                    if ord(data_t[4]) >= 40:
                         client_sms.messages.create(
                             to="+841655240171",
                             from_="+13342125125",
-                            body="HELLO THAO NGUYEN"
+                            body="canh bao! nhiet do thu duoc qua cao "
                         )
                          
 
                 elif data_t[2] == '\x25':
                     print("xu ly data do am") 
-                    humidity = float(ord(data_t[4]))
+                    humidity1 = float(ord(data_t[4]))
 
                     # dua data do am vao infuxdb
-                    print("gia tri: {}".format(humidity))
+                    print("gia tri: {}".format(humidity1))
                     json_body = [
                         {
-                            "measurement": "sensor1",
+                            "measurement": "humidity_1",
                             "fields": {
-                                "value": humidity,
+                                "value": humidity1,
                             }
                         }
                     ]
                     
                     client.write_points(json_body) # viet data tu json den InfluxDB
+                 
+                elif data_t[2] == '\x23':
+                    print("xu ly data anh sang") 
+                    light1_temp = ord(data_t[3])*16*16 + ord(data_t[4])
+                    light1 = round(float(light1_temp / 1.2), 2)
+
+                    # dua data anh sang vao infuxdb
+                    print("gia tri: {}".format(light1))
+                    json_body = [
+                        {
+                            "measurement": "light_1",
+                            "fields": {
+                                "value": light1,
+                            }
+                        }
+                    ]
+                    
+                    client.write_points(json_body) # viet data tu json den InfluxDB
+                
           
+            elif data_t[1] == '\x20':
+                # kiem tra xem nhiet do hay do am 
+                if data_t[2] == '\x24':
+                    print("xu ly data nhiet do tram 2")
+                    temp_2 = float(ord(data_t[4]))
+
+                    # dua data nhiet do vao infuxdb
+                    print("gia tri: {}".format(temp_2))
+                    json_body = [
+                        {
+                            "measurement": "temperature_2",
+                            "fields": {
+                                "value": temp_2,
+                            }
+                        }
+                    ]
+                    
+                    client.write_points(json_body) # viet data tu json den InfluxDB
+
+                    # neu nhiet do qua lon se gui sms ve phone
+                    if ord(data_t[4]) >= 100:
+                        client_sms.messages.create(
+                            to="+841655240171",
+                            from_="+13342125125",
+                            body="nhiet do qua cao"
+                        )
+                         
+
+                elif data_t[2] == '\x25':
+                    print("xu ly data do am tram 2") 
+                    humidity_2 = float(ord(data_t[4]))
+
+                    # dua data do am vao infuxdb
+                    print("gia tri: {}".format(humidity_2))
+                    json_body = [
+                        {
+                            "measurement": "humidity_2",
+                            "fields": {
+                                "value": humidity_2,
+                            }
+                        }
+                    ]
+                    
+                    client.write_points(json_body) # viet data tu json den InfluxDB
 
 if __name__ == '__main__':
     # khoi tao mang intergers de thread1 tao yeu cau
