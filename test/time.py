@@ -1,3 +1,4 @@
+
 import time
 
 a = time.clock()
