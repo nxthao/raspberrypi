@@ -2,6 +2,7 @@
 import threading
 import time
 import serial
+import RPi.GPIO as GPIO
 from PyCRC.CRC16 import CRC16
 from influxdb import InfluxDBClient
 from twilio.rest import Client
@@ -19,16 +20,21 @@ ser = serial.Serial(
 
 
 # cai dat thong so infuxdb
-host = "192.168.1.3"
+host = "192.168.1.6"
 port = "8086"
 dbname = "demo"  #tao database
 client = InfluxDBClient(host=host, port=port, database=dbname) # tao object InfluxDB 
 
 
 # cai dat thong so twilio
-account_sid = " "
-auth_token = " "
+account_sid = ""
+auth_token = ""
 client_sms = Client(account_sid, auth_token)
+
+# cai dat thong so GPIO
+GPIO.setmode(GPIO.BCM)
+led = 4
+GPIO.setup(led, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)#dien tro keo xuong cho led
 
 class Producer(threading.Thread):
     """
@@ -187,6 +193,7 @@ class Consumer1(threading.Thread):
         """
         it will receive data from producer
         """
+        state_previous = False
         while True:
             self.condition.acquire()
             print('condition acquired by {}'.format(self.name))
@@ -216,6 +223,17 @@ class Consumer1(threading.Thread):
             print('condition released by {}'.format(self.name))
             self.condition.release()
 
+            #kiem tra led
+            state = GPIO.input(led)
+            if state == True:
+                if state_previous == False:
+                    ser.write('\x10'+'\x21'+'\x11'+'\xD9'+'\x99')
+                    state_previous = state
+            elif state == False:
+                if state_previous == True:
+                    ser.write('\x10'+'\x21'+'\x00'+'\x19'+'\x95')
+                    state_previous = state
+                  
             # kiem tra xem phai tiva gui khong
            
             if data_t[1] == '\x10':
@@ -275,7 +293,7 @@ class Consumer1(threading.Thread):
                             "measurement": "light_1",
                             "fields": {
                                 "value": light1,
-                            }
+                           }
                         }
                     ]
                     
@@ -325,6 +343,22 @@ class Consumer1(threading.Thread):
                         }
                     ]
                     
+                    client.write_points(json_body) # viet data tu json den InfluxDB
+                elif data_t[2] == '\x23':
+                    print("xu ly data anh sang tram 2") 
+                    light2_temp = ord(data_t[3])*16*16 + ord(data_t[4])
+                    light2 = round(float(light2_temp / 1.2), 2)
+
+                    # dua data anh sang vao infuxdb
+                    print("gia tri: {}".format(light2))
+                    json_body = [
+                        {
+                            "measurement": "light_2",
+                            "fields": {
+                                "value": light2,
+                           }
+                        }
+                    ]
                     client.write_points(json_body) # viet data tu json den InfluxDB
 
 if __name__ == '__main__':
