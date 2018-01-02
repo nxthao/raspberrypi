@@ -36,9 +36,9 @@ GPIO.setmode(GPIO.BCM)
 led = 4
 GPIO.setup(led, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)#dien tro keo xuong cho led
 
-class Producer(threading.Thread):
+class Receive(threading.Thread):
     """
-    Producers will receive data from uart
+    Receives will receive data from uart
     """
     def __init__(self, data, condition, counter):
         threading.Thread.__init__(self)
@@ -165,9 +165,9 @@ class Producer(threading.Thread):
                 print (e)
 
 
-class Consumer1(threading.Thread):
+class Processing(threading.Thread):
     """
-    it will receive data from producer
+    it will receive data from receive
     """
     def __init__(self, data, condition, counter):
         threading.Thread.__init__(self)
@@ -176,7 +176,7 @@ class Consumer1(threading.Thread):
         self.counter = counter
     def run(self):
         """
-        it will receive data from producer
+        it will receive data from receive
         """
         state_previous = False
         while True:
@@ -386,9 +386,9 @@ if __name__ == '__main__':
 
     # day la tao 1 threading.condition moi de cac thread khac cho thong bao cua cac thread khac. co the tim hieu them qua key:"threading.Condition() in python"
     condition = threading.Condition()
-    producer = Producer(data, condition, counter)
-    consumer1 = Consumer1(data, condition, counter)
-    producer.start()
-    consumer1.start()
-    producer.join()
-    consumer1.join()
+    receive = Receive(data, condition, counter)
+    processing = Processing(data, condition, counter)
+    receive.start()
+    processing.start()
+    receive.join()
+    processing.join()
