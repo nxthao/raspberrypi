@@ -18,9 +18,8 @@ ser = serial.Serial(
         timeout = 1
 )
 
-
 # cai dat thong so infuxdb
-host = "192.168.1.2"
+host = "192.168.1.8"
 port = "8086"
 dbname = "demo"  #tao database
 client = InfluxDBClient(host=host, port=port, database=dbname) # tao object InfluxDB 
@@ -36,9 +35,9 @@ GPIO.setmode(GPIO.BCM)
 led = 4
 GPIO.setup(led, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)#dien tro keo xuong cho led
 
-class Receive(threading.Thread):
+class Producer(threading.Thread):
     """
-    Receives will receive data from uart
+    Producers will receive data from uart
     """
     def __init__(self, data, condition, counter):
         threading.Thread.__init__(self)
@@ -51,11 +50,26 @@ class Receive(threading.Thread):
         Append random data to data list at random time.
         """
        
+        state_previous = False
 
         while True:
             t = time.clock() 
             try:
                 while True:
+                    #kiem tra led
+                    state = GPIO.input(led)
+                    if state == True:
+                        if state_previous == False:
+                            ser.write('\x10'+'\x21'+'\x11'+'\xD9'+'\x99')
+                            state_previous = state
+                            print("bat led")  
+                    elif state == False:
+                        if state_previous == True:
+                            ser.write('\x10'+'\x21'+'\x00'+'\x19'+'\x95')
+                            state_previous = state
+                            print("tat led")
+
+
                     a = ser.read()
                     if a == '\xff':
                         #wait to receive data from uart
@@ -103,6 +117,7 @@ class Receive(threading.Thread):
 
             except IndexError as e:
                 print (e)
+                state_previous = state
                 # lenh continue de bo qua cac lenh sau no va cho lai vong lap
                 continue
 
@@ -163,11 +178,12 @@ class Receive(threading.Thread):
 
             except IndexError as e:
                 print (e)
+                state_previous = state
 
 
-class Processing(threading.Thread):
+class Consumer1(threading.Thread):
     """
-    it will receive data from receive
+    it will receive data from producer
     """
     def __init__(self, data, condition, counter):
         threading.Thread.__init__(self)
@@ -176,9 +192,8 @@ class Processing(threading.Thread):
         self.counter = counter
     def run(self):
         """
-        it will receive data from receive
+        it will receive data from producer
         """
-        state_previous = False
         while True:
             self.condition.acquire()
             data_t = []
@@ -204,16 +219,6 @@ class Processing(threading.Thread):
 
             self.condition.release()
 
-            #kiem tra led
-            state = GPIO.input(led)
-            if state == True:
-                if state_previous == False:
-                    ser.write('\x10'+'\x21'+'\x11'+'\xD9'+'\x99')
-                    state_previous = state
-            elif state == False:
-                if state_previous == True:
-                    ser.write('\x10'+'\x21'+'\x00'+'\x19'+'\x95')
-                    state_previous = state
                   
             # kiem tra xem phai tiva gui khong
            
@@ -386,9 +391,9 @@ if __name__ == '__main__':
 
     # day la tao 1 threading.condition moi de cac thread khac cho thong bao cua cac thread khac. co the tim hieu them qua key:"threading.Condition() in python"
     condition = threading.Condition()
-    receive = Receive(data, condition, counter)
-    processing = Processing(data, condition, counter)
-    receive.start()
-    processing.start()
-    receive.join()
-    processing.join()
+    producer = Producer(data, condition, counter)
+    consumer1 = Consumer1(data, condition, counter)
+    producer.start()
+    consumer1.start()
+    producer.join()
+    consumer1.join()
