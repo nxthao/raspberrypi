@@ -19,7 +19,7 @@ ser = serial.Serial(
 )
 
 # cai dat thong so infuxdb
-host = "192.168.1.8"
+host = "192.168.43.180"
 port = "8086"
 dbname = "demo"  #tao database
 client = InfluxDBClient(host=host, port=port, database=dbname) # tao object InfluxDB 
@@ -32,8 +32,10 @@ client_sms = Client(account_sid, auth_token)
 
 # cai dat thong so GPIO
 GPIO.setmode(GPIO.BCM)
-led = 4
-GPIO.setup(led, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)#dien tro keo xuong cho led
+led1 = 4
+led2 = 17 
+GPIO.setup(led1, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)#dien tro keo xuong cho led
+GPIO.setup(led2, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)#dien tro keo xuong cho led
 
 class Producer(threading.Thread):
     """
@@ -50,25 +52,39 @@ class Producer(threading.Thread):
         Append random data to data list at random time.
         """
        
-        state_previous = False
+        state_previous1 = False
+        state_previous2 = False
+        print("loi led")
 
         while True:
             t = time.clock() 
             try:
                 while True:
                     #kiem tra led
-                    state = GPIO.input(led)
-                    if state == True:
-                        if state_previous == False:
+                    state1 = GPIO.input(led1)
+                    state2 = GPIO.input(led2)
+                    if state1 == True:
+                        if state_previous1 == False:
                             ser.write('\x10'+'\x21'+'\x11'+'\xD9'+'\x99')
-                            state_previous = state
-                            print("bat led")  
-                    elif state == False:
-                        if state_previous == True:
+                            state_previous1 = state1
+                            print("bat led 1")  
+                    elif state1 == False:
+                        if state_previous1 == True:
                             ser.write('\x10'+'\x21'+'\x00'+'\x19'+'\x95')
-                            state_previous = state
-                            print("tat led")
+                            state_previous1 = state1
+                            print("tat led 1")
 
+
+                    if state2 == True:
+                        if state_previous2 == False:
+                            ser.write('\x20'+'\x22'+'\x11'+'\xD9'+'\x66')
+                            state_previous2 = state2
+                            print("bat led 2")  
+                    elif state2 == False:
+                        if state_previous2 == True:
+                            ser.write('\x20'+'\x22'+'\x00'+'\x19'+'\x6A')
+                            state_previous2 = state2
+                            print("tat led 2")
 
                     a = ser.read()
                     if a == '\xff':
@@ -117,7 +133,8 @@ class Producer(threading.Thread):
 
             except IndexError as e:
                 print (e)
-                state_previous = state
+                state_previous1 = state1
+                state_previous2 = state2
                 # lenh continue de bo qua cac lenh sau no va cho lai vong lap
                 continue
 
@@ -137,8 +154,34 @@ class Producer(threading.Thread):
 
             # kiem tra xem co data gui lien tiep nhau ko
             m = 6
+            #self.condition.acquire()
             try:
-                while m < 20:
+                while m < 32:
+                    #kiem tra led
+                    state1 = GPIO.input(led1)
+                    state2 = GPIO.input(led2)
+                    if state1 == True:
+                        if state_previous1 == False:
+                            ser.write('\x10'+'\x21'+'\x11'+'\xD9'+'\x99')
+                            state_previous1 = state1
+                            print("bat led 1")  
+                    elif state1 == False:
+                        if state_previous1 == True:
+                            ser.write('\x10'+'\x21'+'\x00'+'\x19'+'\x95')
+                            state_previous1 = state1
+                            print("tat led 1")
+
+
+                    if state2 == True:
+                        if state_previous2 == False:
+                            ser.write('\x20'+'\x22'+'\x11'+'\xD9'+'\x66')
+                            state_previous2 = state2
+                            print("bat led 2")  
+                    elif state2 == False:
+                        if state_previous2 == True:
+                            ser.write('\x20'+'\x22'+'\x00'+'\x19'+'\x6A')
+                            state_previous2 = state2
+                            print("tat led 2")
                     """ data gui tu uart se duoc luu tat ca trong b
                         vi vay se kiem tra trong b
                     """
@@ -168,18 +211,18 @@ class Producer(threading.Thread):
                                 self.condition.release()
 
                                 print(" data 2 send ok \n")
-                                break;
                             else:
                                 print(" data  2 send don't ok \n")      
                     m += 1
+            
 
             # de bat khi khong nhan duoc du lieu
             # (thong qua bat loi khong co chi so trong mang)
 
             except IndexError as e:
                 print (e)
-                state_previous = state
-
+                state_previous1 = state1
+                state_previous2 = state2
 
 class Consumer1(threading.Thread):
     """
@@ -242,11 +285,11 @@ class Consumer1(threading.Thread):
                     client.write_points(json_body) # viet data tu json den InfluxDB
 
                     # neu nhiet do qua lon se gui sms ve phone
-                    if ord(data_t[4]) >= 300:
+                    if ord(data_t[4]) >= 30:
                         client_sms.messages.create(
                             to="+841655240171",
                             from_="+13342125125",
-                            body="canh bao! nhiet do thu duoc qua cao "
+                            body="canh bao! nhiet do thu duoc tai tram 1 qua cao "
                         )
                          
 
@@ -302,6 +345,13 @@ class Consumer1(threading.Thread):
                     ]
                     
                     client.write_points(json_body) # viet data tu json den InfluxDB
+                    # neu khi doc qua lon se gui sms ve phone
+                    if ord(data_t[4]) >= 10:
+                        client_sms.messages.create(
+                            to="+841655240171",
+                            from_="+13342125125",
+                            body="Canh bao! Co khi doc tai tram 1 gay hai cho cay trong"
+                        )
                     print("xu ly xong tram 1 \n \n ") 
 
             elif data_t[1] == '\x20':
@@ -324,11 +374,11 @@ class Consumer1(threading.Thread):
                     client.write_points(json_body) # viet data tu json den InfluxDB
 
                     # neu nhiet do qua lon se gui sms ve phone
-                    if ord(data_t[4]) >= 100:
+                    if ord(data_t[4]) >= 32:
                         client_sms.messages.create(
                             to="+841655240171",
                             from_="+13342125125",
-                            body="nhiet do qua cao"
+                            body="canh bao! nhiet do thu duoc tai tram 2 qua cao "
                         )
                          
 
@@ -365,7 +415,7 @@ class Consumer1(threading.Thread):
                     ]
                     client.write_points(json_body) # viet data tu json den InfluxDB
                 elif data_t[2] == '\x27':
-                    print("xu ly data khong khi") 
+                    print("xu ly data khong khi tram 2") 
                     k2 = float(ord(data_t[4]))
 
                     # dua data khong khi vao infuxdb
@@ -382,6 +432,13 @@ class Consumer1(threading.Thread):
                     
                     client.write_points(json_body) # viet data tu json den InfluxDB
 
+                    # neu khi doc qua lon se gui sms ve phone
+                    if ord(data_t[4]) >= 10:
+                        client_sms.messages.create(
+                            to="+841655240171",
+                            from_="+13342125125",
+                            body="Canh bao! Co khi doc tai tram 2 gay hai cho cay trong"
+                        )
 if __name__ == '__main__':
     # khoi tao mang intergers de thread1 tao yeu cau
     data = []
